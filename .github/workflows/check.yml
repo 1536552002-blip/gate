@@ -38,7 +38,7 @@ jobs:
           CHECK_TIMEOUT: "90"
           VPNGATE_API: "https://www.vpngate.net/api/iphone/"
           NODES_URL: https://${{ github.repository_owner }}.github.io/gate/nodes.txt
-          EDGE_HOSTS: "jiedian-gate-edge.xiajiao363-svg-vpn-gate.workers.dev:443"
+          EDGE_HOSTS: "104.17.108.145:443,172.67.216.79:443"
           OPTIMAL_API: ""
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
