@@ -42,6 +42,7 @@ VPNGATE_MIRROR = os.environ.get(
     "https://raw.githubusercontent.com/fdciabdul/Vpngate-Scraper-API/main/json/data.json",
 )
 WORKER_CHECK_URL = os.environ.get("CHECK_WORKER", "https://你的域名/check?sstp=vpn:vpn@")
+CHECK_TOKEN = os.environ.get("CHECK_TOKEN", "")
 CONCURRENCY = max(1, int(os.environ.get("CHECK_CONCURRENCY", "32")))
 CHECK_TIMEOUT = float(os.environ.get("CHECK_TIMEOUT", "90"))
 MAX_CHECK_NODES = int(os.environ.get("MAX_CHECK_NODES", "0"))
@@ -95,7 +96,7 @@ EDGE_HOSTS = [
 # 优选 API 地址配置 (支持逗号分隔多个，可配置在 GitHub Action Secret / Env 中)
 OPTIMAL_API = os.environ.get("OPTIMAL_API", "https://cf.090227.xyz/ct?ips=6&port=443")
 
-NODES_URL = os.environ.get("NODES_URL", "https://YOUR_GITHUB_USERNAME.github.io/gate/nodes.txt")
+NODES_URL = os.environ.get("NODES_URL", "https://1536552002-blip.github.io/gate/nodes.txt")
 
 # ---------------------------------------------------------------------------
 # 日志
@@ -333,7 +334,10 @@ def check_one(node, session):
     out["exit"] = None
     out["residential"] = "unknown"
     try:
-        r = session.get(url, timeout=CHECK_TIMEOUT, headers={"User-Agent": "Mozilla/5.0 (gate-checker)"})
+        headers = {"User-Agent": "Mozilla/5.0 (gate-checker)"}
+        if CHECK_TOKEN:
+            headers["Authorization"] = f"Bearer {CHECK_TOKEN}"
+        r = session.get(url, timeout=CHECK_TIMEOUT, headers=headers)
         if r.status_code != 200:
             out["error"] = f"HTTP {r.status_code}"
             out["worker_error"] = True
@@ -408,7 +412,7 @@ def build_outputs(results, raw_count, sstp_count, source):
     data = {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC"),
         "source": source,
-        "worker": WORKER_CHECK_URL,
+        "worker": "private checker",
         "stats": stats,
         "countries": by_country,
         "available": available,
@@ -502,7 +506,11 @@ def main():
     log("CLOUDFLARE WORKER", f"耗时: {elapsed:.1f}s")
 
     if uniq and not success and len(worker_errors) == len(uniq):
+        log("CLOUDFLARE WORKER", "错误示例: " + json.dumps([r.get("error") for r in worker_errors[:3]], ensure_ascii=False))
         die("Worker 全部请求异常, 检测服务不可用 — 本次运行判定失败 (不生成空结果)")
+
+    if not success:
+        die("No usable SSTP nodes; keep the last successful deployment instead of publishing an empty subscription")
 
     data = build_outputs(results, raw_count, sstp_count, source)
     log("RESULT", f"可用节点: {len(success)}")
